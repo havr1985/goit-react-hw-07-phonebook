@@ -1,32 +1,95 @@
-import { createSlice, nanoid } from "@reduxjs/toolkit";
+import { createSlice } from "@reduxjs/toolkit";
+import { requestContacts, requestAddContacts, requestDeleteContacts } from "services/Api";
+import { createAsyncThunk } from "@reduxjs/toolkit";
 
+export const fetchContacts = createAsyncThunk(
+    'contacts/fetchAll',
+    async (_, thunkAPI) => {
+        try {
+            const contacts = await requestContacts();
+            return contacts;
+        } catch (error) {
+            return thunkAPI.rejectWithValue(error.message);
+        }
+    }
+);
+
+export const addContacts = createAsyncThunk(
+    'contacts/addContact',
+    async (newContact, thunkAPI) => {
+        try {
+            const contacts = await requestAddContacts(newContact);
+            return contacts;
+        } catch (error) {
+            return thunkAPI.rejectWithValue(error.message);
+        }
+    }
+);
+
+export const deleteContacts = createAsyncThunk(
+    'contacts/deleteContact',
+    async (contactId, thunkAPI) => {
+        try {
+            const contacts = await requestDeleteContacts(contactId);
+            return contacts;
+        } catch (error) {
+            return thunkAPI.rejectWithValue(error.message);
+        }
+    }
+);
+
+const initialState = {
+    items: [],
+    isLoading: false,
+    error: null,
+}
 
 const contactsSlice = createSlice({
     name: 'contacts',
-    initialState: [{ id: nanoid(), name: 'Rosie Simpson', number: '459-12-56' },
-    { id: nanoid(), name: 'Hermione Kline', number: '443-89-12' },
-    { id: nanoid(), name: 'Eden Clements', number: '645-17-79' },
-    { id: nanoid(), name: 'Annie Copeland', number: '227-91-26' },],
+    initialState,
     
-    reducers: {
-        onAdd(state, actions) {
-            const check = state.some(({ name }) => actions.payload.values.name === name);
-            if (check) {
-                alert(`${actions.payload.values.name} is already in contacts`);
-                return;
-            };
-            state.push({
-                id: nanoid(),
-                name: actions.payload.values.name,
-                number: actions.payload.values.number,
-            })
-        },
-        onDelete(state, actions) {
-            return state.filter(item => item.id !== actions.payload);
-        }
-    }
+    extraReducers: builder =>
+    builder
+      .addCase(fetchContacts.pending, state => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchContacts.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.items = action.payload;
+      })
+      .addCase(fetchContacts.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+    
+    .addCase(addContacts.pending, state => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(addContacts.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.items.unshift(action.payload);
+      })
+      .addCase(addContacts.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
 
+      .addCase(deleteContacts.pending, state => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteContacts.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.items = state.items.filter(
+          item => item.id !== action.payload.id
+        );
+      })
+      .addCase(deleteContacts.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      }),
 });
 
 export const contactsReducer = contactsSlice.reducer;
-export const { onAdd, onDelete } = contactsSlice.actions;
